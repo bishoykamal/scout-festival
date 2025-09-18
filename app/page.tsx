@@ -1,103 +1,397 @@
-import Image from "next/image";
+'use client'
+import React, { useState, useEffect } from 'react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously } from "firebase/auth";
+import { getFirestore, collection, addDoc, getDocs } from 'firebase/firestore';
 
-export default function Home() {
+// Firebase configuration - replace with your own config
+const firebaseConfig = {
+  apiKey: "AIzaSyDujLUK8v7MG3YDowbdNm6_KdDEU0XrpoI",
+  authDomain: "scout-festival-2025.firebaseapp.com",
+  projectId: "scout-festival-2025",
+  storageBucket: "scout-festival-2025.firebasestorage.app",
+  messagingSenderId: "185478183601",
+  appId: "1:185478183601:web:be1dd429aae3eae609c090",
+  measurementId: "G-NTYYE6M9JR"
+};
+const collectionName = 'registrations';
+
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Sign in anonymously
+signInAnonymously(auth)
+  .then(() => {
+    console.log("Signed in anonymously");
+  })
+  .catch((error) => {
+    console.error("Anonymous sign-in error:", error);
+  });
+
+interface FormData {
+  relativeName: string;
+  scouterName: string;
+  scouterStage: string;
+  relation: string;
+  relativePhone: string;
+  scouterPhone: string;
+}
+
+const DataCollectionApp: React.FC = () => {
+  const [activeView, setActiveView] = useState<'form' | 'table'>('form');
+  const [formData, setFormData] = useState<FormData>({
+    relativeName: '',
+    scouterName: '',
+    scouterStage: '',
+    relation: '',
+    relativePhone: '',
+    scouterPhone: ''
+  });
+  const [submittedData, setSubmittedData] = useState<FormData[]>([]);
+  const [errors, setErrors] = useState<Partial<FormData>>({});
+  const [searchTerm, setSearchTerm] = useState<string>('');
+
+  useEffect(() => {
+    // Load data from localStorage on component mount
+    const savedData = localStorage.getItem('scouterData');
+    if (savedData) {
+      setSubmittedData(JSON.parse(savedData));
+    }
+    
+    // Load data from Firestore
+    const loadDataFromFirestore = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, collectionName));
+        const firestoreData: FormData[] = [];
+        querySnapshot.forEach((doc) => {
+          firestoreData.push(doc.data() as FormData);
+        });
+        setSubmittedData(firestoreData);
+      } catch (error) {
+        console.error('Error loading data from Firestore:', error);
+      }
+    };
+    
+    loadDataFromFirestore();
+  }, []);
+
+  const handleInputChange = (field: keyof FormData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: Partial<FormData> = {};
+    
+    if (!formData.relativeName.trim()) newErrors.relativeName = 'Relative name is required';
+    if (!formData.scouterName.trim()) newErrors.scouterName = 'Scouter name is required';
+    if (!formData.scouterStage) newErrors.scouterStage = 'Scouter stage is required';
+    if (!formData.relation.trim()) newErrors.relation = 'Relation is required';
+    if (!formData.relativePhone.trim()) newErrors.relativePhone = 'Relative phone is required';
+    if (!formData.scouterPhone.trim()) newErrors.scouterPhone = 'Scouter phone is required';
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (validateForm()) {
+      try {
+        // Save to Firestore
+        await addDoc(collection(db, collectionName), {
+          ...formData,
+          createdAt: new Date()
+        });
+        
+        // Also save to local state and localStorage for immediate UI update
+        const newData = [...submittedData, formData];
+        setSubmittedData(newData);
+        localStorage.setItem('scouterData', JSON.stringify(newData));
+        
+        // Reset form
+        setFormData({
+          relativeName: '',
+          scouterName: '',
+          scouterStage: '',
+          relation: '',
+          relativePhone: '',
+          scouterPhone: ''
+        });
+        
+        alert('Data submitted successfully and saved to database!');
+      } catch (error) {
+        console.error('Error saving data to Firestore:', error);
+        alert('Error saving data. Please try again.');
+      }
+    }
+  };
+
+  const renderForm = () => (
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle>Scouter and Relatives Data</CardTitle>
+        <CardDescription>Please fill in all the required information</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="relativeName">Relative Name *</Label>
+              <Input
+                id="relativeName"
+                value={formData.relativeName}
+                onChange={(e) => handleInputChange('relativeName', e.target.value)}
+                className={errors.relativeName ? 'border-destructive' : ''}
+              />
+              {errors.relativeName && <p className="text-destructive text-sm">{errors.relativeName}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="scouterName">Scouter Name *</Label>
+              <Input
+                id="scouterName"
+                value={formData.scouterName}
+                onChange={(e) => handleInputChange('scouterName', e.target.value)}
+                className={errors.scouterName ? 'border-destructive' : ''}
+              />
+              {errors.scouterName && <p className="text-destructive text-sm">{errors.scouterName}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="scouterStage">Scouter Stage *</Label>
+              <Select
+                value={formData.scouterStage}
+                onValueChange={(value) => handleInputChange('scouterStage', value)}
+              >
+                <SelectTrigger className={errors.scouterStage ? 'border-destructive' : ''}>
+                  <SelectValue placeholder="Select stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Kashaf">Kashaf</SelectItem>
+                  <SelectItem value="Motaqadem">Motaqadem</SelectItem>
+                  <SelectItem value="Gawala">Gawala</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.scouterStage && <p className="text-destructive text-sm">{errors.scouterStage}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="relation">Relation *</Label>
+              <Input
+                id="relation"
+                value={formData.relation}
+                onChange={(e) => handleInputChange('relation', e.target.value)}
+                className={errors.relation ? 'border-destructive' : ''}
+              />
+              {errors.relation && <p className="text-destructive text-sm">{errors.relation}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="relativePhone">Relative Phone Number *</Label>
+              <Input
+                id="relativePhone"
+                type="tel"
+                value={formData.relativePhone}
+                onChange={(e) => handleInputChange('relativePhone', e.target.value)}
+                className={errors.relativePhone ? 'border-destructive' : ''}
+              />
+              {errors.relativePhone && <p className="text-destructive text-sm">{errors.relativePhone}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="scouterPhone">Scouter Phone Number *</Label>
+              <Input
+                id="scouterPhone"
+                type="tel"
+                value={formData.scouterPhone}
+                onChange={(e) => handleInputChange('scouterPhone', e.target.value)}
+                className={errors.scouterPhone ? 'border-destructive' : ''}
+              />
+              {errors.scouterPhone && <p className="text-destructive text-sm">{errors.scouterPhone}</p>}
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setActiveView('table')}
+            >
+              View Data
+            </Button>
+            <Button type="submit">Submit</Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+
+  const renderTable = () => {
+    const filteredData = submittedData.filter(data =>
+      data.relativeName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return (
+      <Card className="w-full max-w-6xl mx-auto">
+        <CardHeader>
+          <CardTitle>Registered members</CardTitle>
+          <CardDescription>All collected information</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {submittedData.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No data submitted yet.</p>
+              <Button 
+                className="mt-4" 
+                onClick={() => setActiveView('form')}
+              >
+                Go to Form
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="mb-4">
+                <div className="relative max-w-sm">
+                  <Input
+                    placeholder="Search by relative name..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pr-8"
+                  />
+                  {searchTerm && (
+                    <button
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      onClick={() => setSearchTerm('')}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                {searchTerm && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Showing {filteredData.length} of {submittedData.length} records
+                  </p>
+                )}
+              </div>
+              
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Relative Name</TableHead>
+                      <TableHead>Scouter Name</TableHead>
+                      <TableHead>Scouter Stage</TableHead>
+                      <TableHead>Relation</TableHead>
+                      <TableHead>Relative Phone</TableHead>
+                      <TableHead>Scouter Phone</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredData.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          No matching records found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredData.map((data, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{data.relativeName}</TableCell>
+                          <TableCell>{data.scouterName}</TableCell>
+                          <TableCell>{data.scouterStage}</TableCell>
+                          <TableCell>{data.relation}</TableCell>
+                          <TableCell>{data.relativePhone}</TableCell>
+                          <TableCell>{data.scouterPhone}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex justify-end mt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setActiveView('form')}
+                >
+                  Add More Data
+                </Button>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+    <div className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <header className="mb-8 text-center">
+          <div className="flex justify-center mb-4">
+            <img 
+              src="logo.JPG" 
+              alt="Markoura Scout" 
+              className="w-24 h-24 md:w-32 md:h-32 rounded-lg object-cover"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          </div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Markoura Festival 2025</h1>
+          <p className="text-muted-foreground">Registration</p>
+        </header>
+
+        <nav className="flex justify-center mb-8">
+          <div className="flex space-x-2 p-1 bg-muted rounded-lg">
+            <Button
+              variant={activeView === 'form' ? 'default' : 'ghost'}
+              onClick={() => setActiveView('form')}
+              className="rounded-md"
+            >
+              Data Entry Form
+            </Button>
+            <Button
+              variant={activeView === 'table' ? 'default' : 'ghost'}
+              onClick={() => setActiveView('table')}
+              className="rounded-md"
+            >
+              View Data
+            </Button>
+          </div>
+        </nav>
+
+        <main>
+          {activeView === 'form' ? renderForm() : renderTable()}
+        </main>
+      </div>
     </div>
   );
-}
+};
+
+export default DataCollectionApp;
+
+
