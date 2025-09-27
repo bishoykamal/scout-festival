@@ -33,7 +33,7 @@ const DataCollectionApp: React.FC = () => {
     paymentStatus: "",
     remainingMoney: "",
     paymentMethod: "",
-    relatives: [{ name: "", relation: "", phone: "", customRelation: "" }],
+    relatives: [],
   });
   // const [customRelation, setCustomRelation] = useState<string>("");
   const [errors, setErrors] = useState<{ [key: string]: any }>({});
@@ -128,7 +128,7 @@ const DataCollectionApp: React.FC = () => {
           paymentStatus: "",
           remainingMoney: "",
           paymentMethod: "",
-          relatives: [{ name: "", relation: "", phone: "", customRelation: "" }],
+          relatives: [],
         });
         // setCustomRelation("");
 
@@ -246,7 +246,7 @@ const DataCollectionApp: React.FC = () => {
               <div key={index} className="border rounded-lg p-4 mb-4">
                 <div className="flex justify-between items-center mb-4">
                   <h4 className="font-medium">Relative {index + 1}</h4>
-                  {formData.relatives.length > 1 && (
+                  {formData.relatives.length > 0 && (
                     <Button type="button" onClick={() => removeRelative(index)} variant="ghost" size="sm" className="text-destructive">
                       Remove
                     </Button>

@@ -38,7 +38,6 @@ export const DataTable: React.FC<TableProps> = ({ setActiveView }) => {
       const querySnapshot = await getDocs(collection(db, collectionName));
       const firestoreData: reservationData[] = [];
       querySnapshot.forEach((doc) => {
-        console.log(doc.data());
         firestoreData.push(doc.data() as reservationData);
       });
       setSubmittedData(firestoreData);
@@ -111,7 +110,7 @@ export const DataTable: React.FC<TableProps> = ({ setActiveView }) => {
                     <TableHead>Payment Status</TableHead>
                     <TableHead>Remaining Money</TableHead>
                     <TableHead>Payment Method</TableHead>
-                    <TableHead>Relatives Count</TableHead>
+                    <TableHead>Number of Persons in Ticket</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -120,9 +119,13 @@ export const DataTable: React.FC<TableProps> = ({ setActiveView }) => {
                       {/* Main scouter row */}
                       <TableRow className="bg-muted/50">
                         <TableCell>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 p-0 text-sm font-bold" onClick={() => toggleRowExpansion(data.scouterPhone)}>
-                            {expandedRows.has(data.scouterPhone) ? "-" : "+"}
-                          </Button>
+                          {data.relatives.length > 0 ? (
+                            <Button variant="ghost" size="icon" className="h-6 w-6 p-0 text-sm font-bold" onClick={() => toggleRowExpansion(data.scouterPhone)}>
+                              {expandedRows.has(data.scouterPhone) ? "-" : "+"}
+                            </Button>
+                          ) : (
+                            <></>
+                          )}
                         </TableCell>
                         <TableCell>{data.scouterPhone}</TableCell>
                         <TableCell>{data.scouterName}</TableCell>
@@ -130,7 +133,7 @@ export const DataTable: React.FC<TableProps> = ({ setActiveView }) => {
                         <TableCell>{data.paymentStatus}</TableCell>
                         <TableCell>{data.remainingMoney}</TableCell>
                         <TableCell>{data.paymentMethod}</TableCell>
-                        <TableCell>{data.relatives.length}</TableCell>
+                        <TableCell>{data.relatives.length + 1}</TableCell>
                       </TableRow>
 
                       {/* Expanded relatives rows */}
