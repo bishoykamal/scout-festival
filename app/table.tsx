@@ -32,6 +32,8 @@ export const DataTable: React.FC<TableProps> = ({ setActiveView }) => {
   const [submittedData, setSubmittedData] = useState<reservationData[]>([]);
 
   const filteredData = submittedData.filter((data: any) => data.scouterPhone.toLowerCase().includes(searchTerm.toLowerCase()));
+  const totalNumberOfPersons = submittedData.reduce((a, c) => a + c.relatives.length + 1, 0);
+  const totalRemainingMoney = submittedData.reduce((a, c) => (c.remainingMoney === "" ? a + 0 : a + parseInt(c.remainingMoney)), 0);
 
   const loadDataFromFirestore = async () => {
     try {
@@ -63,122 +65,136 @@ export const DataTable: React.FC<TableProps> = ({ setActiveView }) => {
   }, []);
 
   return (
-    <Card className="w-full max-w-6xl mx-auto">
-      <CardHeader>
-        <CardTitle>Registered members</CardTitle>
-        <CardDescription>All collected information</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {submittedData.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>No data submitted yet.</p>
-            <Button className="mt-4" onClick={() => setActiveView("form")}>
-              Go to Form
-            </Button>
-          </div>
-        ) : (
-          <>
-            <div className="mb-4">
-              <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                <div className="relative max-w-sm">
-                  <Input placeholder="Search by scouter phone number" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pr-8" />
-                  {searchTerm && (
-                    <button className="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setSearchTerm("")}>
-                      ×
-                    </button>
-                  )}
-                </div>
-                <Button variant="outline" onClick={() => loadDataFromFirestore()}>
-                  Refresh Data
-                </Button>
-              </div>
-              {searchTerm && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  Showing {filteredData.length} of {submittedData.length} records
-                </p>
-              )}
-            </div>
-
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-8"></TableHead>
-                    <TableHead>Scouter Phone</TableHead>
-                    <TableHead>Scouter Name</TableHead>
-                    <TableHead>Scouter Stage</TableHead>
-                    <TableHead>Payment Status</TableHead>
-                    <TableHead>Remaining Money</TableHead>
-                    <TableHead>Payment Method</TableHead>
-                    <TableHead>Number of Persons in Ticket</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredData.map((data: reservationData) => (
-                    <React.Fragment key={data.scouterPhone}>
-                      {/* Main scouter row */}
-                      <TableRow className="bg-muted/50">
-                        <TableCell>
-                          {data.relatives.length > 0 ? (
-                            <Button variant="ghost" size="icon" className="h-6 w-6 p-0 text-sm font-bold" onClick={() => toggleRowExpansion(data.scouterPhone)}>
-                              {expandedRows.has(data.scouterPhone) ? "-" : "+"}
-                            </Button>
-                          ) : (
-                            <></>
-                          )}
-                        </TableCell>
-                        <TableCell>{data.scouterPhone}</TableCell>
-                        <TableCell>{data.scouterName}</TableCell>
-                        <TableCell>{data.scouterStage}</TableCell>
-                        <TableCell>{data.paymentStatus}</TableCell>
-                        <TableCell>{data.remainingMoney}</TableCell>
-                        <TableCell>{data.paymentMethod}</TableCell>
-                        <TableCell>{data.relatives.length + 1}</TableCell>
-                      </TableRow>
-
-                      {/* Expanded relatives rows */}
-                      {expandedRows.has(data.scouterPhone) && (
-                        <>
-                          <TableRow className="bg-muted/20">
-                            <TableCell colSpan={8} className="p-0">
-                              <div className="px-6 py-3">
-                                <h4 className="font-medium text-sm mb-2">Relatives:</h4>
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead>Relative Name</TableHead>
-                                      <TableHead>Relation</TableHead>
-                                      <TableHead>Phone</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {data.relatives.map((relative: RelativeData, index: number) => (
-                                      <TableRow key={`${data.scouterPhone}-${index}`}>
-                                        <TableCell>{relative.name}</TableCell>
-                                        <TableCell>{relative.relation}</TableCell>
-                                        <TableCell>{relative.phone}</TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        </>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            <div className="flex justify-end mt-4">
-              <Button variant="outline" onClick={() => setActiveView("form")}>
-                Add More Data
+    <>
+      <Card className="w-full max-w-6xl mx-auto" style={{ marginBottom: 15 }}>
+        <CardHeader>
+          <CardTitle>Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul>
+            <li>Total Number of tickets: {submittedData.length}</li>
+            <li>Total Number of persons: {totalNumberOfPersons}</li>
+            <li>Total Remaining Money: {totalRemainingMoney}</li>
+          </ul>
+        </CardContent>
+      </Card>
+      <Card className="w-full max-w-6xl mx-auto">
+        <CardHeader>
+          <CardTitle>Registered members</CardTitle>
+          <CardDescription>All collected information</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {submittedData.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No data submitted yet.</p>
+              <Button className="mt-4" onClick={() => setActiveView("form")}>
+                Go to Form
               </Button>
             </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+          ) : (
+            <>
+              <div className="mb-4">
+                <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                  <div className="relative max-w-sm">
+                    <Input placeholder="Search by scouter phone number" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pr-8" />
+                    {searchTerm && (
+                      <button className="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setSearchTerm("")}>
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  <Button variant="outline" onClick={() => loadDataFromFirestore()}>
+                    Refresh Data
+                  </Button>
+                </div>
+                {searchTerm && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Showing {filteredData.length} of {submittedData.length} records
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-8"></TableHead>
+                      <TableHead>Scouter Phone</TableHead>
+                      <TableHead>Scouter Name</TableHead>
+                      <TableHead>Scouter Stage</TableHead>
+                      <TableHead>Payment Status</TableHead>
+                      <TableHead>Remaining Money</TableHead>
+                      <TableHead>Payment Method</TableHead>
+                      <TableHead>Number of Persons in Ticket</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredData.map((data: reservationData) => (
+                      <React.Fragment key={data.scouterPhone}>
+                        {/* Main scouter row */}
+                        <TableRow className="bg-muted/50">
+                          <TableCell>
+                            {data.relatives.length > 0 ? (
+                              <Button variant="ghost" size="icon" className="h-6 w-6 p-0 text-sm font-bold" onClick={() => toggleRowExpansion(data.scouterPhone)}>
+                                {expandedRows.has(data.scouterPhone) ? "-" : "+"}
+                              </Button>
+                            ) : (
+                              <></>
+                            )}
+                          </TableCell>
+                          <TableCell>{data.scouterPhone}</TableCell>
+                          <TableCell>{data.scouterName}</TableCell>
+                          <TableCell>{data.scouterStage}</TableCell>
+                          <TableCell>{data.paymentStatus}</TableCell>
+                          <TableCell>{data.remainingMoney}</TableCell>
+                          <TableCell>{data.paymentMethod}</TableCell>
+                          <TableCell>{data.relatives.length + 1}</TableCell>
+                        </TableRow>
+
+                        {/* Expanded relatives rows */}
+                        {expandedRows.has(data.scouterPhone) && (
+                          <>
+                            <TableRow className="bg-muted/20">
+                              <TableCell colSpan={8} className="p-0">
+                                <div className="px-6 py-3">
+                                  <h4 className="font-medium text-sm mb-2">Relatives:</h4>
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead>Relative Name</TableHead>
+                                        <TableHead>Relation</TableHead>
+                                        <TableHead>Phone</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {data.relatives.map((relative: RelativeData, index: number) => (
+                                        <TableRow key={`${data.scouterPhone}-${index}`}>
+                                          <TableCell>{relative.name}</TableCell>
+                                          <TableCell>{relative.relation}</TableCell>
+                                          <TableCell>{relative.phone}</TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          </>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex justify-end mt-4">
+                <Button variant="outline" onClick={() => setActiveView("form")}>
+                  Add More Data
+                </Button>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 };
